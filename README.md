@@ -1,8 +1,7 @@
 # Why summation by parts is not enough
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-success.svg)](https://opensource.org/licenses/MIT)
-[![DOI](https://zenodo.org/badge/DOI/TODO/zenodo.TODO.svg)](https://doi.org/TODO/zenodo.TODO)
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18596276.svg)](https://doi.org/10.5281/zenodo.18596276)
 
 This repository contains information and code to reproduce the results presented in the
 article
@@ -27,7 +26,7 @@ use the implementations provided here, please **also** cite this repository as
   author={Glaubitz, Jan and Iske, Armin and Lampert, Joshua and Öffner, Philipp},
   year={2026},
   howpublished={\url{https://github.com/JoshuaLampert/2026\_SBP\_not\_enough}},
-  doi={TODO/zenodo.TODO}
+  doi={10.5281/zenodo.18596276}
 }
 ```
 
