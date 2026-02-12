@@ -10,8 +10,8 @@ article
   title={Why summation by parts is not enough},
   author={Glaubitz, Jan and Iske, Armin and Lampert, Joshua and Öffner, Philipp},
   year={2026},
-  month={TODO},
-  eprint={TODO},
+  month={02},
+  eprint={2602.10786},
   eprinttype={arxiv},
   eprintclass={math.NA}
 }
