@@ -63,7 +63,7 @@ described in the `README.md` file therein.
 - Jan Glaubitz (Linköping University, Sweden)
 - Armin Iske (University of Hamburg, Germany)
 - Joshua Lampert (University of Hamburg, Germany)
-- Philipp Öffner (TU Clausthal, Germany)
+- Philipp Öffner (Clausthal University of Technology, Germany)
 
 
 ## License
