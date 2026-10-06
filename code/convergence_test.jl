@@ -17,21 +17,23 @@ function create_eoc_table(filename, Ds)
     tables_str = []
 
     initial_refinement_level = 1
-    refinements = 4
+    refinements = 6
     for D in Ds
         eocs, errorsmatrix = convergence_test(joinpath(EXAMPLES_DIR, filename), refinements, D=D, abstol=1e-14, reltol=1e-14,
             initial_refinement_level=initial_refinement_level, tspan=(0.0, 1.0))
+        nvariables_ = size(errorsmatrix[:l2], 2)
         table_str = []
         for i in 1:refinements
             K = 2^(i + initial_refinement_level - 1)
             l2 = errorsmatrix[:l2][i, :]
             eoc_first_variable = i == 1 ? "---" : @sprintf("%.2f", eocs[:l2][i-1, 1])
-            push!(table_str, [string(K), [@sprintf("%.2e", l2[v]) for v in eachvariable(equations)]..., eoc_first_variable])
+            push!(table_str, [string(K), [@sprintf("%.2e", l2[v]) for v in 1:nvariables_]..., eoc_first_variable])
         end
         push!(tables_str, table_str)
     end
 
-    if equations isa CompressibleEulerEquations2D
+    equations_ = @invokelatest Main.equations
+    if equations_ isa CompressibleEulerEquations2D
         caption_equation_name = "compressible Euler equations"
         header_variables = [L"$\rho$", L"$\rho v_1$", L"$\rho v_2$", L"$\rho e$"]
         label = "table:eocs_compressible_euler"
@@ -40,12 +42,12 @@ function create_eoc_table(filename, Ds)
         header_variables = ["error"]
         label = "table:eocs_advection"
     end
-    column_labels = ["K", header_variables..., "EOC"]
+    column_labels = [L"$n_b$", header_variables..., "EOC"]
     style = LatexTableStyle(first_line_column_label=String[])
     table_kwargs = (; column_labels, backend=:latex, table_format=latex_table_format__booktabs, style, alignment=:c)
 
     println("\\begin{table}[htb]")
-    println("\\caption{\$L^2\$-errors and EOCs for the $caption_equation_name and function spaces \$\\mathcal{F}=\\mathcal{P}_3\$ and \$\\mathcal{F}=\\mathcal{T}\$} using sparse FSBP operators with bandwidth \$b = 3\$ on \$K\$ blocks with \$N = 15\$ nodes each.")
+    println("\\caption{\$L^2\$-errors and EOCs for the $caption_equation_name and function spaces \$\\mathcal{F}=\\mathcal{P}_3\$ and \$\\mathcal{F}=\\mathcal{T}\$ using sparse FSBP operators with bandwidth \$b = 3\$ on \$K\$ blocks with \$N = 15\$ nodes each.}")
     println("\\begin{subtable}{.5\\linewidth}")
     println("\\subcaption{\$\\mathcal{F}=\\mathcal{P}_3\$}")
     println("\\centering")

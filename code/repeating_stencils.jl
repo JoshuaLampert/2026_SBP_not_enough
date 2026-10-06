@@ -1,3 +1,7 @@
+using Pkg
+Pkg.activate(@__DIR__)
+Pkg.instantiate()
+
 using SummationByPartsOperatorsExtra
 import Optim, ForwardDiff
 using KernelInterpolation

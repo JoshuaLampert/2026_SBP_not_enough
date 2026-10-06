@@ -10,6 +10,7 @@ using SummationByPartsOperatorsExtra: function_space_operator, GlaubitzNordströ
 using Trixi
 using OrdinaryDiffEqSSPRK
 using Plots: Plots, plot, plot!, savefig
+using Printf: @sprintf
 using PrettyTables
 using LaTeXStrings
 
@@ -29,7 +30,7 @@ function solve_equation(D, equations, initial_condition, tspan)
     redirect_stdout(devnull) do
         trixi_include(EXAMPLE, coordinates_min=coordinates_min, coordinates_max=coordinates_max, N=N,
             equations=equations, D=D, tspan=tspan, initial_condition=initial_condition, initial_refinement_level=0,
-            abstol = 1e-6, reltol = 1e-6,
+            abstol = 1e-10, reltol = 1e-10,
             # dt=dt, adaptive=false, alg=SSPRK53()
             )
     end
@@ -105,9 +106,11 @@ linf_errors_final_FSBP2_sin_cos = Float64[]
 bandwidths_sin_cos = (3, 4, 5, 6, N - 1)
 for bandwidth in bandwidths_sin_cos
     println("FSBP b = $bandwidth")
+    # `g_tol = 0.0`: with a positive gradient tolerance, BFGS stops for b = 4, 5 before the residual
+    # falls below the threshold of Remark 2
     D = function_space_operator(basis, nodes, GlaubitzNordströmÖffner2023();
         bandwidth=bandwidth, verbose=false,
-        options=Optim.Options(g_tol=1e-17, iterations=10000, show_trace=false), opt_alg=Optim.BFGS(),
+        options=Optim.Options(g_tol=0.0, iterations=100_000, show_trace=false), opt_alg=Optim.BFGS(),
         autodiff=ADTypes.AutoMooncake(; config=nothing),
     )
     println(rank(Matrix(D)))
@@ -164,12 +167,12 @@ semi_GLL2, sol_GLL2, l2_error_GLL2, linf_error_GLL2 = solve_equation(D_GLL, equa
 # t = last(tspan)
 t = sol_GLL1.t[step]
 pd1 = PlotData1D((x, equation) -> initial_condition1(x, t, equation), semi_GLL1)
-plot!(p_solutions, pd1["scalar"], label="analytical", plot_initial=true, title="", xlims=:auto,
+plot!(p_solutions, pd1["scalar"], label="analytical", title="", xlims=:auto,
     xlabel="x", ylabel="u", linewidth=linewidth, linestyle=linestyles[linestyle_counter],
     yrange=(-1.2, 1.2), legend=nothing, subplot=1)
 t = sol_GLL2.t[step]
 pd2 = PlotData1D((x, equation) -> initial_condition2(x, t, equation), semi_GLL2)
-plot!(p_solutions, pd2["scalar"], label="analytical", plot_initial=true, title="", xlims=:auto,
+plot!(p_solutions, pd2["scalar"], label="analytical", title="", xlims=:auto,
     xlabel="x", ylabel="u", linewidth=linewidth, linestyle=linestyles[linestyle_counter],
     yrange=(-1.2, 1.2), legend=nothing, subplot=2)
 
@@ -179,66 +182,47 @@ plot!(subplot=1, legend_column=2, bottom_margin=18 * Plots.mm,
 
 savefig(p_solutions, joinpath(OUT, "advection_solutions_sparse_subplots.pdf"))
 
-# Table
-stubhead_label = "Error"
-column_labels = [["" for _ in 1:(length(bandwidths_poly)+length(bandwidths_sin_cos)+length(FD_orders))], [[L"b = %$b" for b in bandwidths_poly]..., [L"b = %$b" for b in bandwidths_sin_cos]..., [L"p = %$p" for p in FD_orders]...]]
-column_labels[2][length(bandwidths_poly)] = "dense"
-column_labels[2][length(bandwidths_poly)+length(bandwidths_sin_cos)] = "dense"
-row_labels = [L"$L^2$", L"$L^\infty$"]
-data = Matrix{Any}(undef, 2, length(bandwidths_poly) + length(bandwidths_sin_cos) + length(FD_orders))
-for (i, err) in enumerate(l2_errors_final_FSBP1_poly)
-    data[1, i] = err
+# Tables in the layout of the paper: bandwidths as rows (the last one, N - 1, corresponds to the dense
+# operators) and the L2 and Linf errors for F = P_2 and F = T as columns. In each norm, the entries that
+# are smallest at the printed precision are set in bold.
+format_error(err) = @sprintf("%.1e", err)
+# booktabs format of PrettyTables.jl, but with trimmed rules below the merged column labels so that the
+# two groups of columns remain visibly separated
+const latex_table_format = LatexTableFormat(;
+    borders=LatexTableBorders(; top_line="\\toprule", header_line="\\midrule",
+                              merged_header_cell_line="\\cmidrule(lr)",
+                              middle_line="\\midrule", bottom_line="\\bottomrule"),
+    @latex__all_horizontal_lines, @latex__no_vertical_lines,
+    horizontal_lines_at_data_rows=:none)
+function print_error_table(bandwidths, l2_poly, linf_poly, l2_sin_cos, linf_sin_cos)
+    data = hcat(l2_poly, linf_poly, l2_sin_cos, linf_sin_cos)
+    row_labels = [b == N - 1 ? "dense" : L"b = %$b" for b in bandwidths]
+    column_labels = [["", "", "", ""], [L"$L^2$", L"$L^\infty$", L"$L^2$", L"$L^\infty$"]]
+    # columns 1 and 3 contain L2 errors, columns 2 and 4 Linf errors
+    is_best(data, i, j) = format_error(data[i, j]) ==
+                          format_error(minimum(data[:, isodd(j) ? [1, 3] : [2, 4]]))
+    pretty_table(data; row_labels, column_labels,
+        alignment=:c, formatters=[fmt__printf("%.1e")],
+        highlighters=[LatexHighlighter(is_best, ["textbf"])],
+        merge_column_label_cells=[MergeCells(1, 1, 2, L"$\mathcal{F} = \mathcal{P}_2$", :c),
+            MergeCells(1, 3, 2, L"$\mathcal{F} = \mathcal{T}$", :c)],
+        backend=:latex, table_format=latex_table_format,
+        style=LatexTableStyle(first_line_column_label=String[], row_label=String[]),
+    )
 end
-for (i, err) in enumerate(linf_errors_final_FSBP1_poly)
-    data[2, i] = err
-end
-for (i, err) in enumerate(l2_errors_final_FSBP1_sin_cos)
-    data[1, i+length(bandwidths_poly)] = err
-end
-for (i, err) in enumerate(linf_errors_final_FSBP1_sin_cos)
-    data[2, i+length(bandwidths_poly)] = err
-end
-for (i, err) in enumerate(l2_errors_final_FD1)
-    data[1, i+length(bandwidths_poly)+length(bandwidths_sin_cos)] = err
-end
-for (i, err) in enumerate(linf_errors_final_FD1)
-    data[2, i+length(bandwidths_poly)+length(bandwidths_sin_cos)] = err
-end
-# data[1, end] = l2_error_GLL[1, end]
-# data[2, end] = linf_error_GLL[1, end]
-pretty_table(data; row_labels, column_labels, stubhead_label,
-    alignment=:c, formatters=[fmt__printf("%.1e")],
-    merge_column_label_cells=[MergeCells(1, 1, length(bandwidths_poly), L"FSBP with $\mathcal{F} = \mathcal{P}_2$", :c),
-        MergeCells(1, length(bandwidths_poly) + 1, length(bandwidths_sin_cos), L"FSBP with $\mathcal{F} = \mathcal{T}$", :c),
-        MergeCells(1, length(bandwidths_poly) + length(bandwidths_sin_cos) + 1, length(FD_orders), "Classical FD", :c)],
-    backend=:latex, table_format=latex_table_format__booktabs, style=LatexTableStyle(first_line_column_label=String[]),
-)
 
-data = Matrix{Any}(undef, 2, length(bandwidths_poly) + length(bandwidths_sin_cos) + length(FD_orders))
-for (i, err) in enumerate(l2_errors_final_FSBP2_poly)
-    data[1, i] = err
-end
-for (i, err) in enumerate(linf_errors_final_FSBP2_poly)
-    data[2, i] = err
-end
-for (i, err) in enumerate(l2_errors_final_FSBP2_sin_cos)
-    data[1, i+length(bandwidths_poly)] = err
-end
-for (i, err) in enumerate(linf_errors_final_FSBP2_sin_cos)
-    data[2, i+length(bandwidths_poly)] = err
-end
-for (i, err) in enumerate(l2_errors_final_FD2)
-    data[1, i+length(bandwidths_poly)+length(bandwidths_sin_cos)] = err
-end
-for (i, err) in enumerate(linf_errors_final_FD2)
-    data[2, i+length(bandwidths_poly)+length(bandwidths_sin_cos)] = err
-end
-# data[1, end] = l2_error_GLL[1, end]
-# data[2, end] = linf_error_GLL[1, end]
-pretty_table(data; row_labels, column_labels, stubhead_label,
-    alignment=:c, formatters=[fmt__printf("%.1e")],
-    merge_column_label_cells=[MergeCells(1, 1, length(bandwidths_poly), L"FSBP with $\mathcal{F} = \mathcal{P}_2$", :c),
-        MergeCells(1, length(bandwidths_poly) + 1, length(bandwidths_sin_cos), L"FSBP with $\mathcal{F} = \mathcal{T}$", :c),
-        MergeCells(1, length(bandwidths_poly) + length(bandwidths_sin_cos) + 1, length(FD_orders), "Classical FD", :c)],
-    backend=:latex, table_format=latex_table_format__booktabs, style=LatexTableStyle(first_line_column_label=String[]),
-)
+@assert bandwidths_poly == bandwidths_sin_cos
+
+println("Initial condition sin(pi (x - a t)), k = 1 (not shown as a table in the paper):")
+print_error_table(bandwidths_poly, l2_errors_final_FSBP1_poly, linf_errors_final_FSBP1_poly,
+                  l2_errors_final_FSBP1_sin_cos, linf_errors_final_FSBP1_sin_cos)
+println("Classical FD-SBP operators of orders $(FD_orders): L2 errors ",
+        join(format_error.(l2_errors_final_FD1), ", "), "; Linf errors ",
+        join(format_error.(linf_errors_final_FD1), ", "))
+println()
+println("Initial condition sin(2 pi (x - a t)), k = 2 (Table 3 of the paper):")
+print_error_table(bandwidths_poly, l2_errors_final_FSBP2_poly, linf_errors_final_FSBP2_poly,
+                  l2_errors_final_FSBP2_sin_cos, linf_errors_final_FSBP2_sin_cos)
+println("Classical FD-SBP operators of orders $(FD_orders): L2 errors ",
+        join(format_error.(l2_errors_final_FD2), ", "), "; Linf errors ",
+        join(format_error.(linf_errors_final_FD2), ", "))

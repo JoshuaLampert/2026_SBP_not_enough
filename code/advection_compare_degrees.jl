@@ -23,7 +23,7 @@ function solve_equation(D, equations, initial_condition, tspan)
     coordinates_max = maximum(nodes)
     N = length(nodes)
 
-    CFL = 0.5
+    CFL = 0.05
     dx = minimum(diff(nodes))
     dt = CFL * dx / abs(only(equations.advection_velocity))
     redirect_stdout(devnull) do
@@ -141,13 +141,13 @@ semi_GLL2, sol_GLL2, l2_error_GLL2, linf_error_GLL2 = solve_equation(D_GLL, equa
 # t = last(tspan)
 t = sol_GLL1.t[step]
 pd1 = PlotData1D((x, equation) -> initial_condition1(x, t, equation), semi_GLL1)
-plot!(p_solutions, pd1["scalar"], label="analytical", plot_initial=true, title="", xlims=:auto,
+plot!(p_solutions, pd1["scalar"], label="analytical", title="", xlims=:auto,
     xlabel="x", ylabel="u", linewidth=linewidth, linestyle=linestyles[linestyle_counter],
     yrange=(-1.2, 1.2), legend=nothing, subplot=1,
 )
 t = sol_GLL2.t[step]
 pd2 = PlotData1D((x, equation) -> initial_condition2(x, t, equation), semi_GLL2)
-plot!(p_solutions, pd2["scalar"], label="analytical", plot_initial=true, title="", xlims=:auto,
+plot!(p_solutions, pd2["scalar"], label="analytical", title="", xlims=:auto,
     xlabel="x", ylabel="u", linewidth=linewidth, linestyle=linestyles[linestyle_counter],
     yrange=(-1.2, 1.2), legend=nothing, subplot=2,
 )

@@ -40,5 +40,5 @@ callbacks = CallbackSet(summary_callback, analysis_callback)
 
 saveat = range(tspan..., length=100)
 alg = RDPK3SpFSAL49()
-sol = solve(ode, alg; adaptive=true, abstol=1.0e-6, reltol=1.0e-6, dt=1.0, # dt only dummy, which can be overwritten with trixi_include when adaptive=false
+sol = solve(ode, alg; adaptive=true, abstol=1.0e-10, reltol=1.0e-10, dt=1.0, # dt only dummy, which can be overwritten with trixi_include when adaptive=false
     ode_default_options()..., callback=callbacks, saveat=saveat)

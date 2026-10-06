@@ -37,5 +37,5 @@ callbacks = CallbackSet(summary_callback, analysis_callback, alive_callback)
 
 saveat = range(tspan..., length=100)
 alg = RDPK3SpFSAL49()
-sol = solve(ode, alg; abstol=1.0e-6, reltol=1.0e-6,
+sol = solve(ode, alg; abstol=1.0e-10, reltol=1.0e-10,
     ode_default_options()..., callback=callbacks)

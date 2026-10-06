@@ -54,6 +54,26 @@ function read_analysis_file(filename)
     )
 end
 
+"""
+    plot_indices(data; max_points = 250)
+
+Indices of the samples in `data` that are plotted. If the simulation crashed, the adaptive time step collapses and the error
+blows up within a vanishing time interval. We omit these samples, so that the curve ends where the simulation breaks down.
+A single small time step at the end only stems from hitting the final time exactly and is kept. To keep the plots readable,
+at most about `max_points` of the remaining samples are plotted, skipping the initial one.
+"""
+function plot_indices(data; max_points = 250)
+    # the initial sample stores a placeholder instead of a time step
+    collapsed = data.dts .< 1e-2 * maximum(data.dts[2:end])
+    collapsed[1] = false
+    last_regular = findlast(!, collapsed)
+    n_samples = length(data.dts) - last_regular <= 1 ? length(data.dts) : last_regular
+    stride = max(1, cld(n_samples - 1, max_points))
+    indices = collect(2:stride:n_samples)
+    last(indices) == n_samples || push!(indices, n_samples)
+    return indices
+end
+
 function plot_error_over_time(filenames, d, out_filename)
     # Read all data files
     # Use OrderedDict instead of Dict to preserve insertion order
@@ -82,7 +102,8 @@ function plot_error_over_time(filenames, d, out_filename)
         for (i, (label, data)) in enumerate(data_dict)
             # Sum errors across all variables
             l2_sum = sum(data.l2_errors, dims=2)[:]
-            plot!(p1, data.times[2:end], l2_sum[2:end], label=label, linewidth=2, linestyle=linestyles[mod1(i, length(linestyles))])
+            indices = plot_indices(data)
+            plot!(p1, data.times[indices], l2_sum[indices], label=label, linewidth=2, linestyle=linestyles[mod1(i, length(linestyles))])
         end
 
         p2 = plot(xlabel="t", ylabel=L"$L^{\infty}$ Error", yscale=:log10, legend=nothing)
@@ -90,7 +111,8 @@ function plot_error_over_time(filenames, d, out_filename)
         for (i, (label, data)) in enumerate(data_dict)
             # Sum errors across all variables
             linf_sum = sum(data.linf_errors, dims=2)[:]
-            plot!(p2, data.times[2:end], linf_sum[2:end], label=label, linewidth=2, linestyle=linestyles[mod1(i, length(linestyles))])
+            indices = plot_indices(data)
+            plot!(p2, data.times[indices], linf_sum[indices], label=label, linewidth=2, linestyle=linestyles[mod1(i, length(linestyles))])
         end
 
         p_errors = plot(p1, p2, layout=(1, 2))

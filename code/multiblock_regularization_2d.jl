@@ -50,17 +50,15 @@ debug = [:Iteration, :Time, " | ", (:Cost, "f(x): %.6e"), " | ",
     # (:GradientNorm, "||∇f(x)||: %.6e"), " | ",
     DebugFeasibility(["feasible: ", :Feasible, ", total violation: ", :TotalEq]),
     "\n", :Stop]
-stopping_criterion = StopAfterIteration(102) |
-                     #  StopWhenGradientNormLess(1e-16) |
-                     StopWhenCostLess(1e-28)
 regularization_functions = [sinpi, cospi]
 D_FSBP_reg = function_space_operator(basis, nodes,
     GlaubitzIskeLampertÖffner2026Regularized(); verbose=true, x0=x0,
     regularization_functions=regularization_functions,
-    options=(;
-        debug=debug,
-        stopping_criterion=stopping_criterion,
-    ))
+    # No explicit stopping criterion: we use the default of the augmented Lagrangian
+    # method. Once the equality constraint is satisfied up to round-off, its penalty
+    # parameter keeps growing and the subproblems become numerically unsolvable, so
+    # iterating further destabilizes the method.
+    options=(; debug=debug))
 
 semi_reg, sol_reg, l2_reg, linf_reg = solve_equation(D_FSBP_reg, equations, tspan, "regularized_2d_analysis.dat")
 println("Non reg P_2: L2 error = $l2_non_reg, L∞ error = $linf_non_reg")
