@@ -7,7 +7,8 @@ This repository contains information and code to reproduce the results presented
 article (previously titled "Why summation by parts is not enough")
 ```bibtex
 @online{glaubitz2026summation,
-  title={Why summation by parts is not enough},
+  title={Beyond the summation-by-parts property: nullspace consistency, sparsity, and
+         regularization for {FSBP} operators},
   author={Glaubitz, Jan and Iske, Armin and Lampert, Joshua and Öffner, Philipp},
   year={2026},
   month={02},
